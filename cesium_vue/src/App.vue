@@ -209,6 +209,7 @@ onMounted(() => {
     },
   });
 
+  // 不同类型的材质
   // type color
   let material111 = new Cesium.Material.fromType('Color',{
     color: Cesium.Color.AQUA.withAlpha(0.6)
