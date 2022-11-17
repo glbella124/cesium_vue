@@ -220,16 +220,39 @@ onMounted(() => {
     repeat: new Cesium.Cartesian2(1.0, 1.0),
   });
 
+  // type disffuseMap
+  let material4 = new Cesium.Material.fromType("DiffuseMap",{
+    image:"./texture/logo.png"
+  })
+
+  // type grid
+  let materialGrid = new Cesium.Material.fromType("Grid",{
+    color: Cesium.Color.AQUA.withAlpha(0.5),
+    cellAlpha:0.2,
+    lineCount: new Cesium.Cartesian2(4,4),
+    lineThickness: new Cesium.Cartesian2(4.0,4.0)
+  })
+
+  // type water
+  let materialWater = new Cesium.Material.fromType("Water",{
+    color: new Cesium.Color.AQUA.withAlpha(0.8),
+    distortion:0.25,
+    normalMap:"./Assets/Textures/waterNormals.jpg",
+    frequency:5
+  })
+  console.log(materialWater);
+
   // 表面先计算好
-  // let appearance = new Cesium.EllipsoidSurfaceAppearance({
-  //   material:material3,
-  //   aboveGround:false
-  // })
+  let appearance = new Cesium.EllipsoidSurfaceAppearance({
+    material:materialWater,
+    aboveGround:false,
+    translucent:true
+  })
 
   // 表面没有直接计算
-  let appearance = new Cesium.MaterialAppearance({
-    material: material3,
-  });
+  // let appearance = new Cesium.MaterialAppearance({
+  //   material: materialGrid,
+  // });
 
   // 3 -- 图元
   let primitive = new Cesium.Primitive({
