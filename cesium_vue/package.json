@@ -9,6 +9,7 @@
   "dependencies": {
     "cesium": "^1.98.1",
     "core-js": "^3.8.3",
+    "gsap": "^3.11.3",
     "node-polyfill-webpack-plugin": "^2.0.1",
     "vue": "^3.2.13"
   },
