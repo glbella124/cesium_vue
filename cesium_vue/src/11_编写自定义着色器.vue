@@ -10,7 +10,7 @@ import { log } from "console";
 
 import gsap from "gsap";
 
-// 编写自定义MaterialProperty材质
+// Appearance着色器
 
 // 设置cesium token
 Cesium.Ion.defaultAccessToken =

@@ -10,7 +10,7 @@ import { log } from "console";
 
 import gsap from "gsap";
 
-// 编写自定义MaterialProperty材质
+// fabric 着色器
 
 // 设置cesium token
 Cesium.Ion.defaultAccessToken =
@@ -87,7 +87,7 @@ onMounted(() => {
   let position = Cesium.Cartesian3.fromDegrees(121.5, 31.1, 10000);
 
   // 广州塔
-  let position2 = Cesium.Cartesian3.fromDegrees(113.3191, 23.109, 1000000);
+  let position2 = Cesium.Cartesian3.fromDegrees(113.3191, 23.109, 1000);
 
   // 让相机飞往某个地方
   viewer.camera.flyTo({
@@ -98,6 +98,16 @@ onMounted(() => {
       roll: 0,
     },
   });
+
+  // 添加3D建筑
+  const osmBuildings = viewer.scene.primitives.add(
+    // 若是有自己的数据
+    // new Cesium.Cesium3DTileset({
+    // url:""
+    // })
+
+    new Cesium.createOsmBuildings()
+  );
 
   // 条纹纹理
   let material = new Cesium.StripeMaterialProperty({
@@ -195,66 +205,43 @@ onMounted(() => {
   // test -3 -- 编写着色器修改材质
   // https://cesium.com/downloads/cesiumjs/releases/b28/Documentation/
   // czm_getMaterialInput -- 用作每个材质 czm_getMaterial函数的输入
-  // let material8 = new Cesium.Material({
-  //   fabric: {
-  //     uniforms: {
-  //       uTime: 0.5,
-  //     },
-  //     // diffuse -- 漫反射没有透明度，三维向量
-  //     source: `
-  //     czm_material czm_getMaterial(czm_materialInput materialInput)
-  //     {
-  //       // 生成默认的基础材质
-  //       czm_material material = czm_getDefaultMaterial(materialInput);
-  //       // material.diffuse = vec3(1.0,0.0,0.8);
-  //       // st -- uv坐标
-  //       // material.diffuse = vec3(materialInput.st,0.0);
-  //       // 取余 10%1
-  //       float strength = mod((materialInput.s+uTime)*10.0,1.0);
-  //       material.diffuse = vec3(strength,0.0,0.0);
-  //       return material;
-  //     }
-  //     `,
-  //   },
-  // });
-
-  // gsap.to(material8.uniforms, {
-  //   uTime: 1,
-  //   duration: 2,
-  //   repeat: -1,
-  //   ease: "linear",
-  // });
-
-  // console.log(material8.shaderSource, "material8");
-
-  // Appearance编写着色器修改外观
-  // 表面先计算好
-  let appearance = new Cesium.EllipsoidSurfaceAppearance({
-    // material: material8,
-    // aboveGround: false,
-    // translucent: true,
-    fragmentShaderSource: `
-    varying vec3 v_positionMC;
-    varying vec3 v_positionEC;
-    varying vec2 v_st;
-    uniform float uTime;
-    void main(){
-      czm_materialInput materialInput;
-      gl_FragColor = vec4(v_st,uTime, 1.0);
-    }
-    `,
+  let material8 = new Cesium.Material({
+    fabric: {
+      uniforms: {
+        uTime: 0.5,
+      },
+      // diffuse -- 漫反射没有透明度，三维向量
+      source: `
+      czm_material czm_getMaterial(czm_materialInput materialInput)
+      {
+        // 生成默认的基础材质
+        czm_material material = czm_getDefaultMaterial(materialInput);
+        // material.diffuse = vec3(1.0,0.0,0.8);
+        // st -- uv坐标
+        // material.diffuse = vec3(materialInput.st,0.0);
+        // 取余 10%1
+        float strength = mod((materialInput.s+uTime)*10.0,1.0);
+        material.diffuse = vec3(strength,0.0,0.0);
+        return material;
+      }
+      `,
+    },
   });
 
-  appearance.uniforms = {
-    uTime: 0,
-  };
-
-  gsap.to(appearance.uniforms, {
+  gsap.to(material8.uniforms, {
     uTime: 1,
     duration: 2,
     repeat: -1,
-    yoyo: true,
     ease: "linear",
+  });
+
+  // console.log(material8.shaderSource, "material8");
+
+  // 表面先计算好
+  let appearance = new Cesium.EllipsoidSurfaceAppearance({
+    material: material8,
+    aboveGround: false,
+    translucent: true,
   });
 
   // 表面没有直接计算
