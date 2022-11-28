@@ -8,7 +8,9 @@ import "./Widgets/widgets.css";
 import { onMounted } from "vue";
 import { log } from "console";
 
-// 基础配置
+import gsap from "gsap";
+
+// 自定义着色器 -- MaterialProperty
 
 // 设置cesium token
 Cesium.Ion.defaultAccessToken =
@@ -85,22 +87,7 @@ onMounted(() => {
   let position = Cesium.Cartesian3.fromDegrees(121.5, 31.1, 10000);
 
   // 广州塔
-  let position2 = Cesium.Cartesian3.fromDegrees(113.3191, 23.109, 1000);
-
-  // setView瞬间到达指定位置，视角
-  // viewer.camera.setView({
-  //   // 指定相机位置
-  //   destination: position,
-  //   // 指定相机视角
-  //   orientation:{
-  //     // 指定相机的朝向，偏航角 -- 沿y轴旋转
-  //     heading:Cesium.Math.toRadians(0),
-  //     // 指定相机的俯仰角 -- 沿x轴旋转 0度是竖直向上,-90度是向下
-  //     pitch:Cesium.Math.toRadians(-40),
-  //     // 指定相机的滚转角
-  //     roll:0
-  //   }
-  // });
+  let position2 = Cesium.Cartesian3.fromDegrees(113.3191, 23.109, 1000000);
 
   // 让相机飞往某个地方
   viewer.camera.flyTo({
@@ -112,54 +99,76 @@ onMounted(() => {
     },
   });
 
-  // 添加3D建筑
-  const osmBuildings = viewer.scene.primitives.add(
-    // 若是有自己的数据
-    // new Cesium.Cesium3DTileset({
-    // url:""
-    // })
+  // 封装一个自定义材质
+  class CustomMaterialProperty {
+    constructor() {
+      this.definationChanged = new Cesium.Event();
+      // 增加自己的着色器
+      Cesium.Material._materialCache.addMaterial("CustomMaterial", {
+        fabric: {
+          type: "CustomMaterial",
+          uniforms: {
+            uTime: 0,
+          },
+          source: `
+          czm_material czm_getMaterial(czm_materialInput materialInput)
+          {
+            // 生成默认的基础材质
+            czm_material material = czm_getDefaultMaterial(materialInput);
+            // material.diffuse = vec3(1.0,0.0,0.8);
+            // st -- uv坐标
+            material.diffuse = vec3(materialInput.st,uTime);
+            return material;
+          }
+      `,
+        },
+      });
 
-    new Cesium.createOsmBuildings()
-  );
+      this.params = {
+        uTime:0
+      }
 
-  // 复杂材质
-  // MaterialProperty
-  // let material = new Cesium.ColorMaterialProperty(
-  //   new Cesium.Color(1.0,1.0,1.0,1.0)
-  // )
-  // console.log(material,"ColorMaterialProperty");
+      gsap.to(this.params,{
+        uTime:1,
+        duration:2,
+        repeat:-1,
+        yoyo:true,
+        ease:"linear"
+      })
+    }
 
-  // 棋盘纹理
-  // let material = new Cesium.CheckerboardMaterialProperty({
-  //   // 奇数行颜色
-  //   evenColor:Cesium.Color.WHITE,
-  //   // 偶数行颜色
-  //   oddColor:Cesium.Color.BLACK,
-  //   repeat: new Cesium.Cartesian2(4,4)
-  // })
-  // console.log(material,"checkboard");
 
-  // 条纹纹理
-  let material = new Cesium.StripeMaterialProperty({
-    evenColor: Cesium.Color.RED,
-    oddColor: Cesium.Color.YELLOW,
-    repeat: 8,
-  });
+    getType() {
+      // 返回材质类型
+      return "CustomMaterial";
+    }
 
-  // 网格纹理
-  let material1 = new Cesium.GridMaterialProperty({
-    color: Cesium.Color.BLUE,
-    cellAlpha: 0.2,
-    lineCount: new Cesium.Cartesian2(8, 8),
-    lineThickness: new Cesium.Cartesian2(2.0, 2.0),
-  });
+    // 用来传uniform
+    getValue(time, result) {
+      // performance -- 以页面打开的毫秒数算的
+      // let t = performance.now() / 1000;
+      // 时间在0,1之间切换
+      // t = t % 1;
+      // console.log(t);
+      // result.uTime = t;
+      // console.log(result,"result");
+
+      // 利用gsap
+      result.uTime = this.params.uTime
+
+      // 返回材质值
+      return result;
+    }
+  }
+
+  let material1 = new CustomMaterialProperty();
 
   // 实体创建矩形
   let rectangle = viewer.entities.add({
     id: "redRect",
     rectangle: {
       coordinates: Cesium.Rectangle.fromDegrees(
-        // 西，难，东，北
+        // 西，南，东，北
         90,
         20,
         110,
@@ -167,7 +176,6 @@ onMounted(() => {
       ),
       // 设置entity材质, MaterialProperty
       material: material1,
-      // material: Cesium.Color.RED.withAlpha(0.5),
     },
   });
 
@@ -209,46 +217,70 @@ onMounted(() => {
     },
   });
 
-  // 不同类型的材质
-  // type color
-  let material111 = new Cesium.Material.fromType('Color',{
-    color: Cesium.Color.AQUA.withAlpha(0.6)
-  })
+  // test -3 -- 编写着色器修改材质
+  // https://cesium.com/downloads/cesiumjs/releases/b28/Documentation/
+  // czm_getMaterialInput -- 用作每个材质 czm_getMaterial函数的输入
+  // let material8 = new Cesium.Material({
+  //   fabric: {
+  //     uniforms: {
+  //       uTime: 0.5,
+  //     },
+  //     // diffuse -- 漫反射没有透明度，三维向量
+  // source: `
+  // czm_material czm_getMaterial(czm_materialInput materialInput)
+  // {
+  //   // 生成默认的基础材质
+  //   czm_material material = czm_getDefaultMaterial(materialInput);
+  //   // material.diffuse = vec3(1.0,0.0,0.8);
+  //   // st -- uv坐标
+  //   // material.diffuse = vec3(materialInput.st,0.0);
+  //   // 取余 10%1
+  //   float strength = mod((materialInput.s+uTime)*10.0,1.0);
+  //   material.diffuse = vec3(strength,0.0,0.0);
+  //   return material;
+  // }
+  // `,
+  //   },
+  // });
 
-  // type image
-  let material3 = new Cesium.Material.fromType("Image", {
-    image: "./texture/Fire.png",
-    repeat: new Cesium.Cartesian2(1.0, 1.0),
-  });
+  // gsap.to(material8.uniforms, {
+  //   uTime: 1,
+  //   duration: 2,
+  //   repeat: -1,
+  //   ease: "linear",
+  // });
 
-  // type disffuseMap
-  let material4 = new Cesium.Material.fromType("DiffuseMap",{
-    image:"./texture/logo.png"
-  })
+  // console.log(material8.shaderSource, "material8");
 
-  // type grid
-  let materialGrid = new Cesium.Material.fromType("Grid",{
-    color: Cesium.Color.AQUA.withAlpha(0.5),
-    cellAlpha:0.2,
-    lineCount: new Cesium.Cartesian2(4,4),
-    lineThickness: new Cesium.Cartesian2(4.0,4.0)
-  })
-
-  // type water
-  let materialWater = new Cesium.Material.fromType("Water",{
-    color: new Cesium.Color.AQUA.withAlpha(0.8),
-    distortion:0.25,
-    normalMap:"./Assets/Textures/waterNormals.jpg",
-    frequency:5
-  })
-  console.log(materialWater);
-
+  // Appearance编写着色器修改外观
   // 表面先计算好
   let appearance = new Cesium.EllipsoidSurfaceAppearance({
-    material:materialWater,
-    aboveGround:false,
-    translucent:true
-  })
+    // material: material8,
+    // aboveGround: false,
+    // translucent: true,
+    fragmentShaderSource: `
+    varying vec3 v_positionMC;
+    varying vec3 v_positionEC;
+    varying vec2 v_st;
+    uniform float uTime;
+    void main(){
+      czm_materialInput materialInput;
+      gl_FragColor = vec4(v_st,uTime, 1.0);
+    }
+    `,
+  });
+
+  appearance.uniforms = {
+    uTime: 0,
+  };
+
+  gsap.to(appearance.uniforms, {
+    uTime: 1,
+    duration: 2,
+    repeat: -1,
+    yoyo: true,
+    ease: "linear",
+  });
 
   // 表面没有直接计算
   // let appearance = new Cesium.MaterialAppearance({
@@ -265,44 +297,6 @@ onMounted(() => {
   // 4 -- 添加到viewer
   viewer.scene.primitives.add(primitive);
   viewer.zoomTo(viewer.entities);
-
-  // 通过按键移动相机
-  document.addEventListener("keydown", (e) => {
-    // 获取相机离地面的高度
-    let height = viewer.camera.positionCartographic.height;
-    let moveRate = height / 10;
-    console.log(moveRate);
-    if (e.key == "w") {
-      // 设置相机向前移动
-      viewer.camera.moveForward(moveRate);
-    } else if (e.key == "s") {
-      // 设置相机向后移动
-      viewer.camera.moveBackward(moveRate);
-    } else if (e.key == "a") {
-      // 设置相机向左移动
-      viewer.camera.moveLeft(moveRate);
-    } else if (e.key == "d") {
-      // 设置相机向右移动
-      viewer.camera.moveRight(moveRate);
-    } else if (e.key == "q") {
-      // 设置相机向左旋转
-      viewer.camera.lookLeft(Cesium.Math.toRadians(0.1));
-    } else if (e.key == "e") {
-      // 设置相机向右q旋转
-      viewer.camera.lookRight(Cesium.Math.toRadians(0.1));
-    } else if (e.key == "r") {
-      // 向上移动相机
-      viewer.camera.lookUp(Cesium.Math.toRadians(0.1));
-    } else if (e.key == "f") {
-      // 向下移动相机
-      viewer.camera.lookDown(Cesium.Math.toRadians(0.1));
-    } else if (e.key == "g") {
-      // 向左逆时针翻滚
-      viewer.camera.twistLeft(Cesium.Math.toRadians(0.1));
-    } else if (e.key == "h") {
-      viewer.camera.twistRight(Cesium.Math.toRadians(0.1));
-    }
-  });
 });
 </script>
 
