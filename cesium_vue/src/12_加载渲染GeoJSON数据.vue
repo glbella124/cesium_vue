@@ -6,8 +6,6 @@
 import * as Cesium from "cesium";
 import "./Widgets/widgets.css";
 import { onMounted } from "vue";
-import { log } from "console";
-
 import gsap from "gsap";
 
 // 加载渲染GeoJSON数据

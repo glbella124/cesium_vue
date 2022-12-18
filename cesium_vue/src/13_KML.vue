@@ -6,11 +6,13 @@
 import * as Cesium from "cesium";
 import "./Widgets/widgets.css";
 import { onMounted } from "vue";
+import { log } from "console";
+
 import gsap from "gsap";
 
-// CZML格式 -- Cesium Language(CZML) Guide
-// 一种JSON格式，用于描述时间动态图形场景，主要用于在运行Cesium的Web浏览器中显示
-// CZML允许数据驱动，可以通过Cesium查看器显示丰富的场景，无需任何自定义代码
+// KML数据生成3D地理标记
+// KML -- 用来存放地理数据的一种格式
+// kmz -- 压缩格式 各国平均GDP
 
 // 设置cesium token
 Cesium.Ion.defaultAccessToken =
@@ -82,86 +84,19 @@ onMounted(() => {
   );
   // 隐藏logo
   viewer.cesiumWidget.creditContainer.style.display = "none";
-  const czml = [
-    {
-      id: "document",
-      name: "box",
-      version: "1.0",
-    },
-    {
-      id: "shape1",
-      name: "Blue box",
-      position: {
-        cartographicDegrees: [-114.0, 40.0, 300000.0],
-      },
-      box: {
-        dimensions: {
-          cartesian: [400000.0, 300000.0, 500000.0],
-        },
-        material: {
-          solidColor: {
-            color: {
-              rgba: [0, 0, 255, 255],
-            },
-          },
-        },
-      },
-    },
-    {
-      id: "shape2",
-      name: "Red box with black outline",
-      position: {
-        cartographicDegrees: [-107.0, 40.0, 300000.0],
-      },
-      box: {
-        dimensions: {
-          cartesian: [400000.0, 300000.0, 500000.0],
-        },
-        material: {
-          solidColor: {
-            color: {
-              rgba: [255, 0, 0, 128],
-            },
-          },
-        },
-        outline: true,
-        outlineColor: {
-          rgba: [0, 0, 0, 255],
-        },
-      },
-    },
-    {
-      id: "shape3",
-      name: "Yellow box outline",
-      position: {
-        cartographicDegrees: [-100.0, 40.0, 300000.0],
-      },
-      box: {
-        dimensions: {
-          cartesian: [400000.0, 300000.0, 500000.0],
-        },
-        fill: false,
-        outline: true,
-        outlineColor: {
-          rgba: [255, 255, 0, 255],
-        },
-      },
-    },
-  ];
 
-  // 方法1：加载czml数据
-  // const dataSourcePromise = Cesium.CzmlDataSource.load(czml);
-  // viewer.dataSources.add(dataSourcePromise)
-  // viewer.zoomTo(dataSourcePromise)
-
-  // 方法2：加载czmal数据
-  let czmlUrl = "./Assets/box.czml";
-  let promiseData = Cesium.CzmlDataSource.load(czmlUrl);
-  promiseData.then((dataSource) => {
+   // 加载kml数据  -- 立体文字标记
+  // let kmlUrl = "./Assets/facilities1.kml";
+  let kmlUrl = "./Assets/gdpPerCapita2008.kmz"
+  let kmlDataPromise = Cesium.KmlDataSource.load(kmlUrl, {
+    camera: viewer.scene.camera,
+    canvas: viewer.scene.canvas,
+    screenOverlayContainer: viewer.container,
+  });
+  // 单独生成时用Billboard
+  kmlDataPromise.then((dataSource) => {
     console.log(dataSource);
     viewer.dataSources.add(dataSource);
-    // viewer.zoomTo(dataSource);
-    viewer.flyTo(dataSource)
   });
 });
 </script>
