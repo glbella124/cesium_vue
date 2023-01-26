@@ -7,8 +7,10 @@ import * as Cesium from "cesium";
 import "./Widgets/widgets.css";
 import { onMounted } from "vue";
 import gsap from "gsap";
+import planeData from "@/assets/json/plane.json";
+import TextureUniform from "cesium/Source/Scene/Model/TextureUniform";
 
-// czml时序移动
+// 追踪航班跨洋飞行
 // CZML格式 -- Cesium Language(CZML) Guide
 // 一种JSON格式，用于描述时间动态图形场景，主要用于在运行Cesium的Web浏览器中显示
 // CZML允许数据驱动，可以通过Cesium查看器显示丰富的场景，无需任何自定义代码
@@ -33,7 +35,12 @@ window.CESIUM_BASE_URL = "/";
 onMounted(() => {
   let viewer = new Cesium.Viewer("cesiumContainer", {
     // 信息窗口 -- 不提示allow-script报错
-    // infoBox: false,
+    infoBox: false,
+    terrainProvider: Cesium.createWorldTerrain({
+      requestWaterMask: true,
+      requestVertexNormals: true,
+    }),
+    shouldAnimate: true,
     // baseLayerPicker: false,
     // animation: true,
     // timeline: false,
@@ -84,45 +91,90 @@ onMounted(() => {
   // 隐藏logo
   viewer.cesiumWidget.creditContainer.style.display = "none";
 
-  // 加载kml数据
-  const czml = [
-    {
-      id: "document",
-      name: "CZML Point - Time Dynamic",
-      version: "1.0",
-    },
-    {
-      id: "point",
-      // 物体在什么时间范围可用
-      availability: "2012-08-04T16:00:00Z/2012-08-04T16:05:00Z",
-      position: {
-        // 设置物体的起始时间
-        epoch: "2012-08-04T16:00:00Z",
-        // 设置了四个维度，1维是时间，2维是经度，3维是纬度，4维是高度
-        cartographicDegrees: [
-          0, -70, 20, 150000, 100, -80, 44, 150000, 200, -90, 18, 150000, 300,
-          -98, 52, 150000,
-        ],
-      },
-      point: {
-        color: {
-          rgba: [255, 255, 255, 128],
-        },
-        outlineColor: {
-          rgba: [255, 0, 0, 128],
-        },
-        outlineWidth: 3,
-        pixelSize: 15,
-      },
-    },
-  ];
+  // 添加3D建筑
+  const osmBuildings = viewer.scene.primitives.add(
+    new Cesium.createOsmBuildings()
+  );
+  // 采样位置
+  const positionProperty = new Cesium.SampledPositionProperty();
+  // 事件间隔
+  const timeStepInSeconds = 30;
+  // 整个飞行花费的时间
+  const totalSeconds = (planeData.length - 1) * timeStepInSeconds;
+  // console.log(planeData);
+  // 设置起点时间
+  const time = new Date("2022-03-09T10:00:00Z");
+  // Cesium,默认使用的是儒略日的时间
+  const startJulianDate = Cesium.JulianDate.fromDate(time);
+  // 设置终点时间
+  const stopJulianDate = Cesium.JulianDate.addSeconds(
+    startJulianDate,
+    totalSeconds,
+    new Cesium.JulianDate()
+  );
 
-  // 加载czml数据
-  let promiseData = Cesium.CzmlDataSource.load(czml);
-  promiseData.then((dataSource) => {
-    viewer.dataSources.add(dataSource);
-    viewer.flyTo(dataSource);
+  // 将查看器的时间调整到起点和结束点的范围
+  viewer.clock.startTime = startJulianDate.clone();
+  viewer.clock.stopTime = stopJulianDate.clone();
+  viewer.clock.currentTime = startJulianDate.clone();
+  viewer.timeline.zoomTo(startJulianDate, stopJulianDate);
+  // 采样点会自动进行插值计算
+  planeData.forEach((dataPoint, i) => {
+    // 当前点的时间
+    const time = Cesium.JulianDate.addSeconds(
+      startJulianDate,
+      i * timeStepInSeconds,
+      new Cesium.JulianDate()
+    );
+    // 设置当前点的位置
+    const position = Cesium.Cartesian3.fromDegrees(
+      dataPoint.longitude,
+      dataPoint.latitude,
+      dataPoint.height
+    );
+    // 添加轨迹采样点
+    positionProperty.addSample(time, position);
+    // 暂时查看
+    viewer.entities.add({
+      position: position,
+      point: {
+        pixelSize: 10,
+        color: Cesium.Color.RED,
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+      },
+    });
   });
+
+  // 创建飞机
+  const planeEntity = viewer.entities.add({
+    name: "飞机",
+    // 设置飞机的可用 -- 时间间隔集合
+    availability: new Cesium.TimeIntervalCollection([
+      new Cesium.TimeInterval({
+        start: startJulianDate,
+        stop: stopJulianDate,
+      }),
+    ]),
+    position: positionProperty,
+    // VelocityOrientationProperty会自动根据采样点，计算出飞机的速度和方向
+    orientation: new Cesium.VelocityOrientationProperty(positionProperty),
+    model: {
+      uri: "./model/Air.glb",
+      minimumPixelSize: 128,
+      maximumScale: 20000,
+    },
+    // 绘制轨迹线
+    path: new Cesium.PathGraphics({
+      width: 5,
+    }),
+  });
+
+  // 相机追踪运动的物体
+  viewer.trackedEntity = planeEntity;
+
+  // 设置时间速率
+  viewer.clock.multiplier = 10
 });
 </script>
 
