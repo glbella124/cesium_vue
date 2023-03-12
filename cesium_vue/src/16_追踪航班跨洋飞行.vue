@@ -10,7 +10,11 @@ import gsap from "gsap";
 import planeData from "@/assets/json/plane.json";
 import TextureUniform from "cesium/Source/Scene/Model/TextureUniform";
 
-// 3D Tiles 与性能监控
+// 追踪航班跨洋飞行
+// CZML格式 -- Cesium Language(CZML) Guide
+// 一种JSON格式，用于描述时间动态图形场景，主要用于在运行Cesium的Web浏览器中显示
+// CZML允许数据驱动，可以通过Cesium查看器显示丰富的场景，无需任何自定义代码
+
 // 设置cesium token
 Cesium.Ion.defaultAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYjBjMGZlMy01YmEyLTQ3OTctYjNhNC1iZjE1OWUxMWUxOWMiLCJpZCI6Nzc4OTksImlhdCI6MTY1NTQ0MzkyNX0.8cCNrZ_FJRSxIhqhZO_VP7XRLt3IxFB5TaXqpGLmxtk";
@@ -170,7 +174,7 @@ onMounted(() => {
   viewer.trackedEntity = planeEntity;
 
   // 设置时间速率
-  viewer.clock.multiplier = 10;
+  viewer.clock.multiplier = 10
 });
 </script>
 
