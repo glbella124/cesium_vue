@@ -32,7 +32,7 @@
         88
       ]
     },
-    "geometricError": 30,
+    "geometricError": 70,
     "refine": "ADD",
     "content": {
       "uri": "parent.b3dm",

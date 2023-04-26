@@ -10,8 +10,13 @@ import gsap from "gsap";
 import planeData from "@/assets/json/plane.json";
 import TextureUniform from "cesium/Source/Scene/Model/TextureUniform";
 
-// 3D Tiles 与性能监控
+// 3dTiles -- 自定义样式 -- 高级设置
+
 // 设置cesium token
+
+// geometricError -- 几何误差，在屏幕上显示的与真实大小的误差,误差值越大越精细,变小了也可以看到
+// boundingVolume -- 表示范围
+// boundingVolume.region -- 顺序为west,south,east,north,minium height,maxmum height
 Cesium.Ion.defaultAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYjBjMGZlMy01YmEyLTQ3OTctYjNhNC1iZjE1OWUxMWUxOWMiLCJpZCI6Nzc4OTksImlhdCI6MTY1NTQ0MzkyNX0.8cCNrZ_FJRSxIhqhZO_VP7XRLt3IxFB5TaXqpGLmxtk";
 // 设置cesium静态资源路径
@@ -31,146 +36,70 @@ window.CESIUM_BASE_URL = "/";
 onMounted(() => {
   let viewer = new Cesium.Viewer("cesiumContainer", {
     // 信息窗口 -- 不提示allow-script报错
-    infoBox: false,
-    terrainProvider: Cesium.createWorldTerrain({
-      requestWaterMask: true,
-      requestVertexNormals: true,
-    }),
+    infoBox: true,
     shouldAnimate: true,
-    // baseLayerPicker: false,
-    // animation: true,
-    // timeline: false,
-    // homeButton: false,
-    // sceneModePicker: false,
-    // navigationHelpButton: false,
-    // fullscreenButton: false,
-    // vrButton: false,
-    // selectionIndicator: false,
+
   });
 
-  // 地图叠加
-  // let imageryLayers = viewer.imageryLayers;
-  // let layer = imageryLayers.addImageryProvider(
-  //   // 天地图中文标记服务
-  //   new Cesium.WebMapTileServiceImageryProvider({
-  //     alpha: 0.8,
-  //     url: "http://{s}.tianditu.gov.cn/cia_c/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=cia&tileMatrixSet=c&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=30d07720fa76f07732d83c748bb84211",
-  //     layer: "tdtCva",
-  //     style: "default",
-  //     format: "tiles",
-  //     tileMatrixSetID: "c",
-  //     subdomains: ["t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7"],
-  //     tilingScheme: new Cesium.GeographicTilingScheme(),
-  //     tileMatrixLabels: [
-  //       "1",
-  //       "2",
-  //       "3",
-  //       "4",
-  //       "5",
-  //       "6",
-  //       "7",
-  //       "8",
-  //       "9",
-  //       "10",
-  //       "11",
-  //       "12",
-  //       "13",
-  //       "14",
-  //       "15",
-  //       "16",
-  //       "17",
-  //       "18",
-  //     ],
-  //     maximumLevel: 18,
-  //   })
-  // );
+  // 设置沙箱允许使用js
+  let iframe = document.getElementsByClassName("cesium-infoBox-iframe")[0]
+  iframe.setAttribute("sandbox","allow-same-origin allow-scripts allow-popups allow-forms")
+  iframe.setAttribute("src","")
+
   // 隐藏logo
   viewer.cesiumWidget.creditContainer.style.display = "none";
 
+  let tiles3D = new Cesium.createOsmBuildings();
   // 添加3D建筑
-  const osmBuildings = viewer.scene.primitives.add(
-    new Cesium.createOsmBuildings()
-  );
-  // 采样位置
-  const positionProperty = new Cesium.SampledPositionProperty();
-  // 事件间隔
-  const timeStepInSeconds = 30;
-  // 整个飞行花费的时间
-  const totalSeconds = (planeData.length - 1) * timeStepInSeconds;
-  // console.log(planeData);
-  // 设置起点时间
-  const time = new Date("2022-03-09T10:00:00Z");
-  // Cesium,默认使用的是儒略日的时间
-  const startJulianDate = Cesium.JulianDate.fromDate(time);
-  // 设置终点时间
-  const stopJulianDate = Cesium.JulianDate.addSeconds(
-    startJulianDate,
-    totalSeconds,
-    new Cesium.JulianDate()
-  );
+  const osmBuildings = viewer.scene.primitives.add(tiles3D);
 
-  // 将查看器的时间调整到起点和结束点的范围
-  viewer.clock.startTime = startJulianDate.clone();
-  viewer.clock.stopTime = stopJulianDate.clone();
-  viewer.clock.currentTime = startJulianDate.clone();
-  viewer.timeline.zoomTo(startJulianDate, stopJulianDate);
-  // 采样点会自动进行插值计算
-  planeData.forEach((dataPoint, i) => {
-    // 当前点的时间
-    const time = Cesium.JulianDate.addSeconds(
-      startJulianDate,
-      i * timeStepInSeconds,
-      new Cesium.JulianDate()
-    );
-    // 设置当前点的位置
-    const position = Cesium.Cartesian3.fromDegrees(
-      dataPoint.longitude,
-      dataPoint.latitude,
-      dataPoint.height
-    );
-    // 添加轨迹采样点
-    positionProperty.addSample(time, position);
-    // 暂时查看
-    viewer.entities.add({
-      position: position,
-      point: {
-        pixelSize: 10,
-        color: Cesium.Color.RED,
-        outlineColor: Cesium.Color.WHITE,
-        outlineWidth: 2,
-      },
-    });
+  // 广州塔
+  let position = Cesium.Cartesian3.fromDegrees(113.3191, 23.109, 1000);
+  viewer.camera.flyTo({
+    destination: position,
+    duration: 2,
   });
 
-  // 创建飞机
-  const planeEntity = viewer.entities.add({
-    name: "飞机",
-    // 设置飞机的可用 -- 时间间隔集合
-    availability: new Cesium.TimeIntervalCollection([
-      new Cesium.TimeInterval({
-        start: startJulianDate,
-        stop: stopJulianDate,
-      }),
-    ]),
-    position: positionProperty,
-    // VelocityOrientationProperty会自动根据采样点，计算出飞机的速度和方向
-    orientation: new Cesium.VelocityOrientationProperty(positionProperty),
-    model: {
-      uri: "./model/Air.glb",
-      minimumPixelSize: 128,
-      maximumScale: 20000,
+  tiles3D.style = new Cesium.Cesium3DTileStyle({
+    defines: {
+      distance:
+        "distance(vec2(${feature['cesium#longitude']},${feature['cesium#latitude']}),vec2(113.3191,23.109))",
     },
-    // 绘制轨迹线
-    path: new Cesium.PathGraphics({
-      width: 5,
-    }),
+    color: {
+      conditions: [
+        ["${distance} < 0.01", "color('rgba(200,100,190,0.9)')"],
+        ["${distance} < 0.02", "color('rgba(200,100,190,0.7)')"],
+        ["${distance} < 0.04", "color('rgba(200,100,190,0.4)')"],
+        ["true", "color('white')"],
+      ],
+    },
+    // show: true,
+    show: "${distance} < 0.04",
   });
 
-  // 相机追踪运动的物体
-  viewer.trackedEntity = planeEntity;
-
-  // 设置时间速率
-  viewer.clock.multiplier = 10;
+  // tiles3D.style = new Cesium.Cesium3DTileStyle({
+  //   // 颜色设置，颜色名/16进制颜色值/rgba颜色值
+  //   // color:"color('yellow')",
+  //   // color: "rgba(255,255,0,0.5)",
+  //   // color:"color('#f00')",
+  //   color: {
+  //     conditions: [
+  //       [
+  //         "${feature['building']} === 'apartments'",
+  //         "color('rgba(50,255,0,0.5)')",
+  //       ],
+  //       [
+  //         "${feature['building']} === 'commercial'",
+  //         "color('rgba(255,100,20,0.8)')",
+  //       ],
+  //       ["${feature['building']} === 'office'", "color('#9999FF')"],
+  //       ["${feature['building']} === 'residential'", "color('#cd7bdd')"],
+  //       ["${feature['cesium#estimatedHeight']} > 300 ", "color('rgba(100,200,255,0.8)')"],
+  //       ["true", "color('white')"],
+  //     ],
+  //   },
+  //   show: true,
+  // });
 });
 </script>
 
